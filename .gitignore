@@ -30,8 +30,17 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
+# APIキーを含む .env は絶対にコミットしない。
 .env*
+# ただし .env.example は必要な環境変数を示すためコミットする（値は空にしておくこと）。
+!.env.example
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 
 # vercel
 .vercel

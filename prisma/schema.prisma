@@ -1,0 +1,285 @@
+// ============================================================================
+// データモデル定義（要件37）。
+//
+// ⚠ 現在このスキーマは実行時に使用していません。
+//
+// 理由: 公開先を GitHub Pages（静的ホスティング）にしたため、サーバーも
+// データベースも存在しない。またデモモードのデータは決定論的に生成しており、
+// 価格スナップショットの履歴を永続化する必要がない。
+//
+// 実データモードでは価格履歴の保存と再計算が必要になるため、そのときに使う
+// データモデルとしてここに定義しておく。実データモードを有効にする際は
+// DATABASE_URL を設定し、`npx prisma migrate deploy` を実行する。
+//
+// 設計上のポイント:
+//  - 同一オファーを重複保存しないよう、providerOfferId に一意制約を張る
+//  - 価格は履歴（FlightPriceSnapshot）として追記し、上書きしない
+//  - 航空会社ルールや鉄道ダイヤが変わった場合に再計算できるよう、
+//    計算結果ではなく「計算の入力」と「情報源」を保持する
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AirlineCategory {
+  LCC
+  FSC
+  HYBRID
+  UNKNOWN
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  UNAVAILABLE
+}
+
+enum AvailabilityStatus {
+  EXACT
+  AVAILABLE
+  FEW
+  UNDISCLOSED
+  UNKNOWN
+  RECHECK
+  SOLD_OUT
+  UNAVAILABLE
+  MAX_PAX
+}
+
+model Airport {
+  code      String   @id // NRT / KIX
+  nameJa    String
+  terminals AirportTerminal[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Airline {
+  /// IATA 2レターコード
+  code            String          @id
+  icaoCode        String?
+  nameJa          String
+  category        AirlineCategory @default(UNKNOWN)
+  /// 「公式」と表示してよいドメインの許可リスト
+  officialDomains String[]
+  bookingUrl      String
+  homeUrl         String
+  supportsDeepLink Boolean        @default(false)
+  boardingRules   AirlineBoardingRule[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+/// 航空会社ごとの搭乗ルール。公式に確認できなかった項目は null のままにする。
+/// null を「0分前」と解釈してはいけない。
+model AirlineBoardingRule {
+  id                         String          @id @default(cuid())
+  airline                    Airline         @relation(fields: [airlineCode], references: [code])
+  airlineCode                String
+  airportCode                String
+  terminal                   String?
+  category                   AirlineCategory
+  checkInDeadlineMinutes     Int?
+  baggageDropDeadlineMinutes Int?
+  securityRecommendedMinutes Int?
+  gateDeadlineMinutes        Int?
+  onlineCheckInAvailable     Boolean?
+  onlineCheckInDeadlineMinutes Int?
+  /// 一次情報のURL。必ず1件以上持つ。
+  officialSourceUrls         String[]
+  /// 最終確認日
+  checkedAt                  DateTime
+  notes                      String[]
+
+  @@unique([airlineCode, airportCode, terminal])
+  @@index([airlineCode])
+}
+
+model AirportTerminal {
+  id            String  @id @default(cuid())
+  airport       Airport @relation(fields: [airportCode], references: [code])
+  airportCode   String
+  terminal      String
+  /// そのターミナルに最も適した降車駅
+  stationCode   String
+  stationNameJa String
+  /// 駅からカウンターまでの移動時間の内訳（official フラグを含む JSON）
+  components    Json
+  sourceUrls    String[]
+  checkedAt     DateTime
+  notes         String[]
+
+  @@unique([airportCode, terminal])
+}
+
+model FlightSearch {
+  id           String       @id @default(cuid())
+  routeId      String
+  date         DateTime     @db.Date
+  periods      String[]
+  adults       Int          @default(1)
+  providerId   String
+  fetchedAt    DateTime
+  offers       FlightOffer[]
+
+  @@index([routeId, date])
+}
+
+model FlightOffer {
+  id                    String       @id @default(cuid())
+  search                FlightSearch @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  searchId              String
+  /// 提供元が返すオファーID。重複保存を防ぐため一意にする。
+  providerOfferId       String
+  providerId            String
+  routeId               String
+  date                  DateTime     @db.Date
+  period                String
+  marketingAirlineCode  String
+  operatingAirlineCode  String
+  flightNumber          String
+  isCodeshare           Boolean      @default(false)
+  originAirport         String
+  destinationAirport    String
+  originTerminal        String?
+  destinationTerminal   String?
+  departureAt           DateTime
+  arrivalAt             DateTime
+  durationMinutes       Int
+  isDirect              Boolean      @default(true)
+  /// 公式ドメイン上であることを検証済みのURLのみ保存する
+  officialDeepLinkUrl   String?
+  fareBreakdown         FareBreakdown?
+  priceSnapshots        FlightPriceSnapshot[]
+  availabilities        FlightAvailability[]
+  accessRecommendations AirportAccessRecommendation[]
+  createdAt             DateTime     @default(now())
+
+  /// 同一オファーを重複保存しない
+  @@unique([providerId, providerOfferId])
+  @@index([routeId, date])
+}
+
+/// 料金内訳。提供元が内訳を返さない場合は known=false にし、
+/// 金額フィールドはすべて null のままにする（推測して埋めない）。
+model FareBreakdown {
+  id                      String      @id @default(cuid())
+  offer                   FlightOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  offerId                 String      @unique
+  known                   Boolean
+  baseFareYen             Int?
+  taxYen                  Int?
+  airportFacilityFeeYen   Int?
+  mandatoryBookingFeeYen  Int?
+  paymentFeeYen           Int?
+  /// どの支払方法を基準にしたか
+  paymentMethodNote       String?
+  notes                   String[]
+}
+
+/// 価格の履歴。上書きせず追記する。
+model FlightPriceSnapshot {
+  id            String      @id @default(cuid())
+  offer         FlightOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  offerId       String
+  /// 手数料込みの総額。取得できなかった場合は null。
+  totalPriceYen Int?
+  currency      String      @default("JPY")
+  fetchedAt     DateTime
+
+  @@index([offerId, fetchedAt])
+}
+
+model FlightAvailability {
+  id             String             @id @default(cuid())
+  offer          FlightOffer        @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  offerId        String
+  status         AvailabilityStatus
+  /// status=EXACT のときだけ値を持つ
+  seatsRemaining Int?
+  /// status=MAX_PAX のときだけ値を持つ。実残席数ではない。
+  maxSearchablePax Int?
+  fetchedAt      DateTime
+
+  @@index([offerId, fetchedAt])
+}
+
+model TransitSearch {
+  id                     String         @id @default(cuid())
+  originStationCode      String
+  destinationStationCode String
+  date                   DateTime       @db.Date
+  arriveBy               DateTime
+  providerId             String
+  /// weekday / holiday / unknown
+  timetableKind          String
+  timetableSource        String
+  fetchedAt              DateTime
+  routes                 TransitRoute[]
+
+  @@index([originStationCode, destinationStationCode, date])
+}
+
+model TransitRoute {
+  id              String        @id @default(cuid())
+  search          TransitSearch @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  searchId        String
+  departureAt     DateTime
+  arrivalAt       DateTime
+  transferCount   Int
+  durationMinutes Int
+  /// 運賃を取得できない場合は null（推測しない）
+  fareYen         Int?
+  isFirstTrain    Boolean       @default(false)
+  /// 区間の配列（JSON）
+  legs            Json
+}
+
+/// 空港アクセスの推奨。航空会社ルールや鉄道ダイヤが変わったときに
+/// 再計算できるよう、計算の入力（boardingCalculation）も保持する。
+model AirportAccessRecommendation {
+  id                     String      @id @default(cuid())
+  offer                  FlightOffer @relation(fields: [flightOfferId], references: [id], onDelete: Cascade)
+  flightOfferId          String
+  status                 String
+  originStationCode      String
+  destinationStationCode String
+  targetAirportArrivalAt DateTime
+  latestSafeDepartureAt  DateTime?
+  recommendedDepartureAt DateTime?
+  arrivalAtAirportStation DateTime?
+  routeName              String?
+  transferCount          Int?
+  durationMinutes        Int?
+  fareYen                Int?
+  riskLevel              RiskLevel
+  riskReasons            String[]
+  recommendationReasons  String[]
+  /// BoardingTimeCalculation 相当（各締切・根拠・情報源）
+  boardingCalculation    Json
+  timetableSource        String
+  fetchedAt              DateTime
+
+  @@index([flightOfferId, fetchedAt])
+}
+
+/// 各データの取得元と最終確認日を記録し、画面に表示できるようにする。
+model DataSourceRecord {
+  id          String   @id @default(cuid())
+  /// flight / transit / boarding_rule / terminal
+  kind        String
+  providerId  String
+  providerNameJa String
+  isDemo      Boolean
+  sourceUrl   String?
+  fetchedAt   DateTime
+
+  @@index([kind, fetchedAt])
+}

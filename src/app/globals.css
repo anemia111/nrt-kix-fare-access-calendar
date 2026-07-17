@@ -1,26 +1,82 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * 日本語UI・スマートフォン優先。
+ * 色だけで情報を伝えないため、価格帯やリスクは記号・文言も併記する（要件40）。
+ */
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Hiragino Sans",
+    "Yu Gothic UI", "Yu Gothic", "Noto Sans JP", "Meiryo", sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --background: #f6f7f9;
+  --surface: #ffffff;
+  --surface-muted: #eef1f5;
+  --foreground: #101828;
+  --foreground-muted: #4a5565;
+  --border: #d7dce3;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0d1117;
+    --surface: #161b22;
+    --surface-muted: #21262d;
+    --foreground: #e6edf3;
+    --foreground-muted: #9aa7b4;
+    --border: #30363d;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  /* iOS で横スクロールが発生しないようにする */
+  overflow-x: hidden;
+}
+
+/* タップ領域を十分に確保する（要件40） */
+button,
+a[role="button"] {
+  touch-action: manipulation;
+}
+
+/* キーボード操作時のフォーカスを明確にする（アクセシビリティ） */
+:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :focus-visible {
+    outline-color: #60a5fa;
+  }
+}
+
+/* 読み込み中のスケルトン */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.skeleton {
+  background: var(--surface-muted);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+  * {
+    scroll-behavior: auto !important;
+  }
 }

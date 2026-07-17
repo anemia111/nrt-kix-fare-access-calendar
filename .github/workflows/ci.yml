@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: 型チェック・Lint・テスト・ビルド
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node.js のセットアップ
+        uses: actions/setup-node@v4
+        with:
+          # Next.js 16 の要件は Node.js 20.9 以上
+          node-version: 22
+          cache: npm
+
+      - name: 依存パッケージのインストール
+        run: npm ci
+
+      - name: 型チェック
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: ユニットテスト（Vitest）
+        run: npm run test
+
+      - name: 本番ビルド（静的エクスポート）
+        run: npm run build
+
+      - name: Playwright ブラウザのインストール
+        # iPhone の検証に WebKit を使うため chromium だけでは足りない
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: E2Eテスト（Playwright）
+        run: npm run test:e2e
+
+      - name: 失敗時のレポートを保存
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  security:
+    name: 依存パッケージの脆弱性確認
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: npm audit
+        # moderate 以上の脆弱性があれば失敗させる
+        run: npm audit --audit-level=moderate
+
+      - name: 秘密情報がコミットされていないか確認
+        run: |
+          if git ls-files | grep -E '^\.env$|^\.env\.local$|^\.env\.production$'; then
+            echo "::error::.env ファイルがコミットされています"
+            exit 1
+          fi
+          echo "OK: .env はコミットされていません"
