@@ -5,6 +5,7 @@ import {
   hashBody,
   isPathAllowed,
   nextState,
+  normalizeForHash,
   parseRobots,
 } from "../scripts/monitorLib.mjs";
 
@@ -36,6 +37,32 @@ describe("robots.txt の解析", () => {
 
   it("ルールが無ければ許可する", () => {
     expect(isPathAllowed(parseRobots(""), UA, "/foo")).toBe(true);
+  });
+});
+
+describe("本文の正規化（誤検出の防止）", () => {
+  it("script/style/コメント/タグを除いた本文だけを比較する", () => {
+    const a = `<html><head><style>.x{color:red}</style></head><body><!-- c1 -->
+      <script>window.__NONCE__="aaaaaaaaaaaaaaaaaaaa";</script>
+      <p>カウンターは出発の30分前まで</p></body></html>`;
+    const b = `<html><head><style>.x{color:blue}</style></head><body><!-- c2 -->
+      <script>window.__NONCE__="bbbbbbbbbbbbbbbbbbbb";</script>
+      <p>カウンターは出発の30分前まで</p></body></html>`;
+    // 見える本文が同じならハッシュも同じ（＝毎日の誤検出が起きない）
+    expect(hashBody(a)).toBe(hashBody(b));
+    expect(normalizeForHash(a)).toBe("カウンターは出発の30分前まで");
+  });
+
+  it("リクエストごとに変わる長いトークンを無視する", () => {
+    const a = "<p>本文</p><div data-token='0123456789abcdef0123'></div>";
+    const b = "<p>本文</p><div data-token='fedcba98765432100000'></div>";
+    expect(hashBody(a)).toBe(hashBody(b));
+  });
+
+  it("本文が実際に変わればハッシュも変わる", () => {
+    const before = "<p>カウンターは出発の30分前まで</p>";
+    const after = "<p>カウンターは出発の45分前まで</p>";
+    expect(hashBody(before)).not.toBe(hashBody(after));
   });
 });
 

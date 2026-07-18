@@ -35,6 +35,8 @@ export type SourceDiff = {
   report?: IssueReport;
 };
 
+export function normalizeForHash(html: string): string;
+
 export function hashBody(text: string): string;
 
 export type RobotsGroup = {

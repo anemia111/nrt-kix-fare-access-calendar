@@ -5,9 +5,35 @@
 
 import { createHash } from "node:crypto";
 
-/** 本文のSHA-256ハッシュ。 */
+/**
+ * 変更検出用に本文を正規化する。
+ *
+ * 生HTMLをそのままハッシュすると、リクエストごとに変わる値（CSRFトークン、
+ * ナンス、セッションID、埋め込みタイムスタンプなど）だけで「変更あり」と
+ * 誤検出してしまう。実際にジェットスターのページは同じ内容でもリクエストごとに
+ * ハッシュが変わることを確認したため、**利用者に見える本文**だけを比較する。
+ *
+ *  - script / style / noscript ブロックを除去
+ *  - HTMLコメントを除去
+ *  - タグを除去して本文テキストだけ残す
+ *  - 長い16進・base64風トークンを除去（保険）
+ *  - 空白を正規化
+ */
+export function normalizeForHash(html) {
+  return String(html)
+    .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[0-9a-f]{16,}/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** 正規化した本文のSHA-256ハッシュ。 */
 export function hashBody(text) {
-  return createHash("sha256").update(String(text)).digest("hex");
+  return createHash("sha256").update(normalizeForHash(text)).digest("hex");
 }
 
 /**
