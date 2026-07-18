@@ -3,15 +3,16 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # 監視ワークフローによる状態ファイルのみの更新では再デプロイしない
+    paths-ignore:
+      - "monitor/**"
   workflow_dispatch:
 
-# GITHUB_TOKEN に Pages へデプロイする権限を与える
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 同時デプロイを1つに制限する。進行中のデプロイは中断しない。
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -23,33 +24,29 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Pages の設定を取得
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - run: npm ci
 
       - name: ビルド
         env:
-          # GitHub Pages はプロジェクトサイトを /<リポジトリ名>/ 配下で配信するため
-          # basePath が必要。
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-          # 実データモードにはサーバーが必要なため、Pages では常にデモ。
           NEXT_PUBLIC_DATA_MODE: demo
         run: npm run build
 
       - name: .nojekyll を追加
-        # _next ディレクトリがアンダースコア始まりのため、Jekyll に無視されないようにする
         run: touch out/.nojekyll
 
       - name: 成果物をアップロード
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: out
 
@@ -65,4 +62,4 @@ jobs:
     steps:
       - name: デプロイ
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

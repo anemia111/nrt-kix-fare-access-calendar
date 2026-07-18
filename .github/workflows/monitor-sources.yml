@@ -1,0 +1,71 @@
+name: Monitor official sources
+
+on:
+  schedule:
+    # 毎日 06:17 JST（21:17 UTC）に確認
+    - cron: "17 21 * * *"
+  workflow_dispatch:
+
+# Issue 作成と状態ファイルのコミットに必要
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: monitor-sources
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: 公式ページの変更を確認
+        run: node scripts/check-official-sources.mjs
+
+      - name: 変更があれば Issue を作成
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('monitor/report.json', 'utf8'));
+            if (!report.hasChanges) {
+              core.info('公式ページの変更はありませんでした。');
+              return;
+            }
+            for (const change of report.changes) {
+              // 同じタイトルの未クローズ Issue があれば重複作成しない
+              const existing = await github.rest.search.issuesAndPullRequests({
+                q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open in:title ${JSON.stringify(change.title)}`,
+              });
+              if (existing.data.total_count > 0) {
+                core.info(`既存の Issue があるためスキップ: ${change.title}`);
+                continue;
+              }
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: change.title,
+                body: change.body,
+                labels: ['official-source-change'],
+              });
+              core.info(`Issue を作成: ${change.title}`);
+            }
+
+      - name: 状態ファイルの更新をコミット
+        run: |
+          if [[ -n "$(git status --porcelain monitor/sources.state.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add monitor/sources.state.json
+            git commit -m "chore(monitor): update official source state [skip deploy]"
+            git push
+          else
+            echo "状態ファイルに変更はありません。"
+          fi

@@ -1,0 +1,48 @@
+name: Update holidays
+
+on:
+  schedule:
+    # 毎週月曜 06:40 JST（21:40 UTC 日曜）に内閣府CSVを確認
+    - cron: "40 21 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-holidays
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: 祝日データを再生成
+        # 終了コード 3（取得失敗）は last-known-good 維持のため成功扱いにする
+        run: |
+          set +e
+          node scripts/generate-holidays.mjs
+          code=$?
+          if [[ $code -eq 0 || $code -eq 3 ]]; then
+            exit 0
+          fi
+          exit $code
+
+      - name: 差分があればコミット
+        run: |
+          if [[ -n "$(git status --porcelain src/data/holidays.generated.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/data/holidays.generated.json
+            git commit -m "chore(holidays): update from Cabinet Office CSV"
+            git push
+          else
+            echo "祝日データに差分はありません。"
+          fi

@@ -42,6 +42,9 @@ yarn-error.log*
 /blob-report/
 /playwright/.cache/
 
+# 監視ワークフローが生成する一時レポート（状態ファイルはコミットする）
+/monitor/report.json
+
 # vercel
 .vercel
 

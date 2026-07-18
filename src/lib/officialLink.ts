@@ -52,18 +52,29 @@ export const OFFICIAL_SITE_REMINDER =
  * 正式な予約URLを返している場合はそれを優先する（要件14）。
  */
 export function resolveOfficialLink(offer: FlightOffer): OfficialLink {
-  const airline = findAirline(offer.marketingAirlineCode);
+  return resolveOfficialLinkByAirline(offer.marketingAirlineCode, offer.officialDeepLinkUrl);
+}
+
+/**
+ * 航空会社コードから公式リンクを決める。実用モード（便情報なし）でも使える。
+ * `apiDeepLinkUrl` は航空券APIが返した予約URL（あれば）。
+ */
+export function resolveOfficialLinkByAirline(
+  airlineCode: string,
+  apiDeepLinkUrl?: string,
+): OfficialLink {
+  const airline = findAirline(airlineCode);
   if (!airline) {
     return {
       ok: false,
-      reason: `${OFFICIAL_SITE_UNKNOWN_MESSAGE}（航空会社コード: ${offer.marketingAirlineCode}）`,
+      reason: `${OFFICIAL_SITE_UNKNOWN_MESSAGE}（航空会社コード: ${airlineCode}）`,
     };
   }
 
   // 優先順位1: APIが返したディープリンク。公式ドメイン上にある場合のみ採用する。
   // OTA や比較サイトのURLが返ってきた場合はここで弾かれる。
-  if (offer.officialDeepLinkUrl) {
-    const validation = validateExternalUrl(offer.officialDeepLinkUrl, airline.officialDomains);
+  if (apiDeepLinkUrl) {
+    const validation = validateExternalUrl(apiDeepLinkUrl, airline.officialDomains);
     if (validation.ok) {
       return {
         ok: true,
