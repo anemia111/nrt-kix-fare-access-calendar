@@ -28,6 +28,7 @@ import { formatMonthDay, todayInJst, weekdayLabel } from "@/lib/time";
 import { holidayNameOf } from "@/domain/holidays";
 import { PlanForm } from "./PlanForm";
 import { CarrierPlanCard } from "./CarrierPlanCard";
+import { LiveSearchView } from "@/components/live/LiveSearchView";
 import { useToast } from "@/components/Toast";
 
 // セッション開始時刻（描画中に Date.now を呼ばないよう、モジュール評価時に一度だけ）。
@@ -122,10 +123,15 @@ export function PlanView() {
         </button>
       </div>
 
+      {/* 実データ検索（Worker 経由）。未設定ならその旨を表示し、デモへは切り替えない。 */}
+      <div className="mt-4">
+        <LiveSearchView conditions={conditions} />
+      </div>
+
+      <h3 className="mt-6 text-base font-bold">公式情報（価格・便時刻を含みません）</h3>
       <p className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-3 text-sm text-[var(--foreground-muted)]">
-        この画面は公式に確認できる情報（対応航空会社・ターミナル・最寄り駅・移動時間・
-        搭乗締切）のみを表示します。<strong>航空券の価格・空席・便の時刻は含みません。</strong>
-        最新の価格・空席・便時刻は各航空会社の公式サイトで確認してください。
+        以下は公式に確認できる情報（対応航空会社・ターミナル・最寄り駅・移動時間・
+        搭乗締切）です。<strong>航空券の価格・空席・便の時刻は含みません。</strong>
       </p>
 
       <div className="mt-4 flex flex-col gap-4">

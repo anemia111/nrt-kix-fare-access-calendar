@@ -13,7 +13,10 @@
     "test:e2e": "playwright test",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
     "holidays:generate": "node scripts/generate-holidays.mjs",
-    "sources:check": "node scripts/check-official-sources.mjs"
+    "sources:check": "node scripts/check-official-sources.mjs",
+    "typecheck:worker": "tsc --noEmit -p worker/tsconfig.json",
+    "worker:dev": "wrangler dev --config worker/wrangler.toml",
+    "worker:deploy": "wrangler deploy --config worker/wrangler.toml"
   },
   "engines": {
     "node": ">=24"
@@ -25,6 +28,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260718.1",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -40,7 +44,8 @@
     "serve": "^14.2.6",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.112.0"
   },
   "overrides": {
     "postcss": "^8.5.10"

@@ -84,6 +84,20 @@ test.describe("実用モード（計画）", () => {
     await expect(page.locator('input[type="time"]')).toHaveValue("07:45");
   });
 
+  test("実価格プロバイダー未設定なら明示し、デモへ切り替えない", async ({ page }) => {
+    test.skip(
+      Boolean(process.env.NEXT_PUBLIC_API_BASE_URL),
+      "実データ設定時は別スイート（live.spec.ts）で検証する",
+    );
+    await expect(page.getByText("実価格検索プロバイダーが設定されていません")).toBeVisible();
+    // 架空の価格が出ていないこと
+    const body = await page.locator("main").innerText();
+    expect(body).not.toMatch(/¥\d/);
+    expect(body).not.toMatch(/\d+,\d{3}円/);
+    // 公式情報は引き続き利用できる
+    await expect(page.getByText("公式の搭乗締切（出発時刻から逆算）").first()).toBeVisible();
+  });
+
   test("横スクロールが発生しない（375px）", async ({ page }) => {
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

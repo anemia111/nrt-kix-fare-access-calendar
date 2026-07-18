@@ -1,0 +1,25 @@
+# Cloudflare Worker（APIプロキシ）の設定。
+#
+# APIキーはこのファイルに書かない。必ず Secrets を使う:
+#   npx wrangler secret put SERPAPI_API_KEY
+#   npx wrangler secret put GOOGLE_MAPS_API_KEY
+#
+# デプロイ:
+#   npx wrangler deploy   （worker ディレクトリで実行）
+
+name = "nrt-kix-api"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# 無料枠のまま運用する。KV や D1 は使わない（Cache API のみ）。
+workers_dev = true
+
+[vars]
+# 公開してよい設定のみ。キーは絶対に置かない。
+ALLOWED_ORIGINS = "https://anemia111.github.io,http://localhost:3000,http://localhost:3210,http://127.0.0.1:3100"
+
+# 航空券検索キャッシュ（秒）。SerpApi の無料枠を節約するため既定60分。
+FLIGHT_CACHE_TTL_SECONDS = "3600"
+
+# 公共交通経路キャッシュ（秒）。最大24時間。
+TRANSIT_CACHE_TTL_SECONDS = "86400"

@@ -26,8 +26,12 @@ const PROVIDER_NAME_JA = "デモデータ（実際の列車時刻ではありま
 const TIMETABLE_SOURCE = "デモデータ（実際の時刻表ではありません）";
 
 /**
- * 時刻表が公開されている日数。
- * 実際の鉄道でも数か月先のダイヤは未公開のため、その状況を再現する。
+ * デモ用の「時刻表が公開されている日数」。
+ *
+ * これは**デモモード限定**の演出で、`scheduleUnavailable` の表示を確認するために
+ * 残している。実データモードにはこの固定制限は無く、Google Routes へ実際に
+ * 問い合わせて、経路が返らなかった場合のみ「ダイヤ未取得」として扱う
+ * （`worker/src/googleRoutes.ts`）。
  */
 export const TIMETABLE_PUBLISHED_DAYS = 60;
 

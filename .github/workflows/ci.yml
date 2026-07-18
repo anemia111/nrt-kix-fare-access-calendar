@@ -28,8 +28,11 @@ jobs:
       - name: 依存パッケージのインストール
         run: npm ci
 
-      - name: 型チェック
+      - name: 型チェック（アプリ）
         run: npm run typecheck
+
+      - name: 型チェック（Cloudflare Worker）
+        run: npm run typecheck:worker
 
       - name: Lint
         run: npm run lint
@@ -38,12 +41,21 @@ jobs:
         run: npm run test
 
       - name: 本番ビルド（静的エクスポート）
+        # 実データ検索のE2Eを動かすため、テスト用に同一オリジンのAPIベースURLを渡す。
+        # 実際のデプロイは deploy.yml が別途ビルドする。
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:3100
         run: npm run build
+
+      - name: ビルド成果物にAPIキーが含まれないことを確認
+        run: npx vitest run tests/buildArtifact.test.ts
 
       - name: Playwright ブラウザのインストール
         run: npx playwright install --with-deps chromium webkit
 
       - name: E2Eテスト（Playwright）
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:3100
         run: npm run test:e2e
 
       - name: 失敗時のレポートを保存
