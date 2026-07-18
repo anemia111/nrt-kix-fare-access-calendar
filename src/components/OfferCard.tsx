@@ -10,19 +10,15 @@
 import { useState } from "react";
 import { AIRLINE_CATEGORY_LABELS, airlineCategoryOf, airlineDisplayName } from "@/domain/airlines";
 import { TIME_PERIOD_DEFINITIONS } from "@/domain/timePeriods";
-import { ROUTES } from "@/domain/routes";
+import { AIRPORTS, ROUTES } from "@/domain/routes";
 import type { AirportAccessRecommendation, FlightOffer } from "@/domain/types";
 import { formatYen, UNKNOWN_LABEL, CHECK_OFFICIAL_LABEL } from "@/lib/format";
-import {
-  OFFICIAL_SITE_REMINDER,
-  resolveOfficialLink,
-  OFFICIAL_LINK_LEVEL_LABELS,
-} from "@/lib/officialLink";
+import { OFFICIAL_SITE_REMINDER, resolveOfficialLink } from "@/lib/officialLink";
 import { clockOfJstDateTime, formatDuration, formatFetchedAt, formatMonthDay } from "@/lib/time";
 import type { FlightOfferRefreshResult } from "@/providers/flight/FlightProvider";
 import { AirportAccessPanel } from "./AirportAccessPanel";
 import { AvailabilityBadge, InfoChip } from "./Badges";
-import { ExternalLinkButton } from "./ExternalLinkButton";
+import { OfficialSiteConfirm } from "./OfficialSiteConfirm";
 import { describeAvailability } from "@/lib/format";
 
 type Props = {
@@ -35,6 +31,7 @@ export function OfferCard({ offer, access, onRefresh }: Props) {
   const [refreshState, setRefreshState] = useState<
     { phase: "idle" } | { phase: "checking" } | { phase: "done"; result: FlightOfferRefreshResult }
   >({ phase: "idle" });
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const link = resolveOfficialLink(offer);
   const availability = describeAvailability(offer.availability);
@@ -179,13 +176,13 @@ export function OfferCard({ offer, access, onRefresh }: Props) {
                 onClick={handleCheckPrice}
                 className="flex min-h-12 w-full items-center justify-center rounded-xl bg-blue-700 px-5 py-3 text-base font-bold text-white transition-colors hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500"
               >
-                最新価格を確認して公式サイトへ進む
+                公式サイトで価格・空席を確認
               </button>
             ) : null}
 
             {refreshState.phase === "checking" ? (
               <div className="flex min-h-12 items-center justify-center rounded-xl border border-[var(--border)] px-5 py-3 text-sm">
-                最新価格を確認しています…
+                （デモ）最新価格を確認しています…
               </div>
             ) : null}
 
@@ -193,8 +190,7 @@ export function OfferCard({ offer, access, onRefresh }: Props) {
               <RefreshResultView
                 result={refreshState.result}
                 originalPriceYen={offer.totalPriceYen}
-                linkUrl={link.url}
-                linkLabel={link.label}
+                onProceed={() => setConfirmOpen(true)}
                 onCancel={() => setRefreshState({ phase: "idle" })}
               />
             ) : null}
@@ -202,47 +198,80 @@ export function OfferCard({ offer, access, onRefresh }: Props) {
             <p className="mt-2 text-xs text-[var(--foreground-muted)]">
               {OFFICIAL_SITE_REMINDER}
             </p>
-            <p className="mt-1 text-xs text-[var(--foreground-muted)]">
-              リンク先: {link.host}（{OFFICIAL_LINK_LEVEL_LABELS[link.level]}）
-              {!link.carriesSearchConditions
-                ? "。搭乗日・路線などの条件は引き継がれません。"
-                : ""}
-            </p>
           </>
         ) : (
           // 誤ったリンクを表示しない（要件13）
           <p className="rounded-lg bg-[var(--surface-muted)] p-3 text-sm">{link.reason}</p>
         )}
       </div>
+
+      {confirmOpen && link.ok ? (
+        <OfficialSiteConfirm
+          link={link}
+          conditions={{
+            airlineNameJa: airlineDisplayName(offer.marketingAirlineCode),
+            dateLabel: formatMonthDay(offer.date),
+            dateIso: offer.date,
+            routeLabel: ROUTES[offer.routeId].fullLabelJa,
+            originAirportName: AIRPORTS[offer.originAirport].nameJa,
+            destinationAirportName: AIRPORTS[offer.destinationAirport].nameJa,
+            adults: 1,
+            checkedBaggage: false,
+            // デモの便名は実データではないため realFlightNumber には渡さない
+          }}
+          onClose={() => setConfirmOpen(false)}
+        />
+      ) : null}
     </article>
+  );
+}
+
+/** 公式サイトへ進む前に確認画面を開くボタン。 */
+function ProceedButton({
+  onProceed,
+  label,
+  variant = "primary",
+}: {
+  onProceed: () => void;
+  label: string;
+  variant?: "primary" | "secondary";
+}) {
+  const styles =
+    variant === "primary"
+      ? "bg-blue-700 text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500"
+      : "border-2 border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)]";
+  return (
+    <button
+      type="button"
+      onClick={onProceed}
+      className={`min-h-12 w-full rounded-xl px-5 py-3 text-base font-bold ${styles}`}
+    >
+      {label}
+    </button>
   );
 }
 
 function RefreshResultView({
   result,
   originalPriceYen,
-  linkUrl,
-  linkLabel,
+  onProceed,
   onCancel,
 }: {
   result: FlightOfferRefreshResult;
   originalPriceYen: number | null;
-  linkUrl: string;
-  linkLabel: string;
+  onProceed: () => void;
   onCancel: () => void;
 }) {
   if (result.status === "unavailable") {
     return (
       <div className="rounded-lg border-2 border-red-500 bg-red-50 p-3 dark:bg-red-950/40">
         <p className="text-sm font-bold text-red-900 dark:text-red-200">
-          この便は現在予約できない可能性があります。
+          （デモ）この便は現在予約できない可能性があります。
           <br />
           航空会社公式サイトで最新状況を確認してください。
         </p>
         <div className="mt-3">
-          <ExternalLinkButton href={linkUrl} variant="secondary">
-            空席状況を確認
-          </ExternalLinkButton>
+          <ProceedButton onProceed={onProceed} label="公式サイトで空席状況を確認" variant="secondary" />
         </div>
       </div>
     );
@@ -251,7 +280,7 @@ function RefreshResultView({
   if (result.status === "price_changed") {
     return (
       <div className="rounded-lg border-2 border-amber-500 bg-amber-50 p-3 dark:bg-amber-950/40">
-        <p className="text-sm font-bold">価格が更新されました</p>
+        <p className="text-sm font-bold">（デモ）価格が更新されました</p>
         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
           <dt className="text-[var(--foreground-muted)]">取得時</dt>
           <dd className="tabular-nums line-through">{formatYen(result.previousPriceYen)}</dd>
@@ -259,9 +288,7 @@ function RefreshResultView({
           <dd className="text-base font-bold tabular-nums">{formatYen(result.currentPriceYen)}</dd>
         </dl>
         <div className="mt-3 space-y-2">
-          <ExternalLinkButton href={linkUrl}>
-            更新後の価格を確認して公式サイトへ進む
-          </ExternalLinkButton>
+          <ProceedButton onProceed={onProceed} label="更新後の価格を確認して公式サイトへ進む" />
           <button
             type="button"
             onClick={onCancel}
@@ -278,9 +305,9 @@ function RefreshResultView({
     return (
       <div>
         <p className="mb-2 text-sm text-[var(--foreground-muted)]">
-          価格は変わっていません（{formatYen(originalPriceYen)}）。
+          （デモ）価格は変わっていません（{formatYen(originalPriceYen)}）。
         </p>
-        <ExternalLinkButton href={linkUrl}>{linkLabel}</ExternalLinkButton>
+        <ProceedButton onProceed={onProceed} label="公式サイトで価格・空席を確認" />
       </div>
     );
   }
@@ -291,7 +318,7 @@ function RefreshResultView({
       <p className="mb-2 text-sm text-[var(--foreground-muted)]">
         最新価格を再確認できませんでした。公式サイトで最終価格を確認してください。
       </p>
-      <ExternalLinkButton href={linkUrl}>{linkLabel}</ExternalLinkButton>
+      <ProceedButton onProceed={onProceed} label="公式サイトで価格・空席を確認" />
     </div>
   );
 }

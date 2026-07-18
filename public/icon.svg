@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="成田関空計画">
+  <rect width="512" height="512" rx="96" fill="#1d4ed8"/>
+  <path d="M120 300 L392 300" stroke="#ffffff" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="150" cy="300" r="16" fill="#ffffff"/>
+  <circle cx="362" cy="300" r="16" fill="#ffffff"/>
+  <path d="M196 210 l150 -40 a22 22 0 0 1 26 30 l-40 120 -30 0 20 -96 -52 14 -20 40 -26 0 12 -58 -44 12 -18 -8 z" fill="#ffffff"/>
+  <text x="256" y="410" font-family="system-ui, sans-serif" font-size="72" font-weight="700" fill="#ffffff" text-anchor="middle">NRT⇄KIX</text>
+</svg>

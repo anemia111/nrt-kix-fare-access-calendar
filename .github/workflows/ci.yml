@@ -3,6 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+    # 監視ワークフローによる状態ファイルのみの更新では CI を回さない
+    paths-ignore:
+      - "monitor/**"
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -14,13 +17,12 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Node.js のセットアップ
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          # Next.js 16 の要件は Node.js 20.9 以上
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: 依存パッケージのインストール
@@ -39,7 +41,6 @@ jobs:
         run: npm run build
 
       - name: Playwright ブラウザのインストール
-        # iPhone の検証に WebKit を使うため chromium だけでは足りない
         run: npx playwright install --with-deps chromium webkit
 
       - name: E2Eテスト（Playwright）
@@ -47,7 +48,7 @@ jobs:
 
       - name: 失敗時のレポートを保存
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: playwright-report/
@@ -59,17 +60,16 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - run: npm ci
 
       - name: npm audit
-        # moderate 以上の脆弱性があれば失敗させる
         run: npm audit --audit-level=moderate
 
       - name: 秘密情報がコミットされていないか確認

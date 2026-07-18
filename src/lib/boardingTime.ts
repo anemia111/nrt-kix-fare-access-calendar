@@ -40,24 +40,63 @@ export type BoardingTimeInput = {
   readonly calculatedAt: JstDateTime;
 };
 
+/**
+ * 便に依存しない搭乗締切の計算入力。
+ * 実用モードでは、利用者が公式サイトで確認した出発時刻からこの型を作り、
+ * 架空の便オブジェクトを介さずに計算する。
+ */
+export type BoardingParams = {
+  readonly originAirport: AirportCode;
+  readonly originTerminal?: string;
+  readonly operatingAirlineCode: string;
+  readonly marketingAirlineCode: string;
+  readonly isCodeshare: boolean;
+  readonly date: string;
+  readonly departureMinutes: number;
+  readonly departureAt: JstDateTime;
+  readonly hasCheckedBaggage: boolean;
+  readonly usesOnlineCheckIn: boolean;
+  readonly calculatedAt: JstDateTime;
+};
+
 /** 安全余裕の基礎値（分）。空港内で迷う・並ぶことを見込む最低限。 */
 const BASE_SAFETY_BUFFER_MINUTES = 10;
 
+/** FlightOffer から搭乗締切を計算する（デモモードで使用）。 */
 export function calculateBoardingTime(input: BoardingTimeInput): BoardingTimeCalculation {
   const { offer, hasCheckedBaggage, usesOnlineCheckIn, calculatedAt } = input;
-  const airportCode = offer.originAirport;
+  return calculateBoardingTimeFromParams({
+    originAirport: offer.originAirport,
+    originTerminal: offer.originTerminal,
+    operatingAirlineCode: offer.operatingAirlineCode,
+    marketingAirlineCode: offer.marketingAirlineCode,
+    isCodeshare: offer.isCodeshare,
+    date: offer.date,
+    departureMinutes: offer.departureMinutes,
+    departureAt: offer.departureAt,
+    hasCheckedBaggage,
+    usesOnlineCheckIn,
+    calculatedAt,
+  });
+}
+
+export function calculateBoardingTimeFromParams(
+  params: BoardingParams,
+): BoardingTimeCalculation {
+  const { hasCheckedBaggage, usesOnlineCheckIn, calculatedAt } = params;
+  const airportCode = params.originAirport;
   const reasons: string[] = [];
   const sources = new Set<string>();
 
   // --- 1. 適用する航空会社ルールを決める ---------------------------------
   // コードシェア便では空港での手続きは実際の運航会社の案内が適用されることが
   // 多いため、運航会社を先に探し、無ければ販売会社で探す（要件14）。
-  const { rule, appliedAirlineCode } = resolveRule(offer, airportCode);
+  const { rule, appliedAirlineCode } = resolveRule(params, airportCode);
 
   const category = airlineCategoryOf(appliedAirlineCode);
   const fallback = BOARDING_FALLBACKS[category];
 
-  if (offer.isCodeshare) {
+  if (params.isCodeshare) {
     reasons.push(
       `コードシェア便のため、実際に空港手続きが適用される${airlineDisplayName(appliedAirlineCode)}のルールで計算しています。`,
     );
@@ -136,18 +175,18 @@ export function calculateBoardingTime(input: BoardingTimeInput): BoardingTimeCal
     category,
     hasCheckedBaggage,
     usedFallback,
-    date: offer.date,
+    date: params.date,
   });
   reasons.push(...bufferReasons);
 
   // --- 5. ターミナル移動 -------------------------------------------------
-  const access = findTerminalAccess(airportCode, offer.originTerminal);
+  const access = findTerminalAccess(airportCode, params.originTerminal);
   let terminalTransferMinutes: number;
   if (access) {
     terminalTransferMinutes = totalTransferMinutes(access);
     access.sourceUrls.forEach((url) => sources.add(url));
     reasons.push(
-      `${access.stationNameJa}から${offer.originTerminal}のチェックインカウンターまで${terminalTransferMinutes}分かかるため、その分早い列車が必要です。`,
+      `${access.stationNameJa}から${params.originTerminal}のチェックインカウンターまで${terminalTransferMinutes}分かかるため、その分早い列車が必要です。`,
     );
     const assumptions = access.components.filter((component) => !component.official);
     if (assumptions.length > 0) {
@@ -164,15 +203,15 @@ export function calculateBoardingTime(input: BoardingTimeInput): BoardingTimeCal
   }
 
   // --- 6. 各時刻を組み立てる --------------------------------------------
-  const departureMinutes = offer.departureMinutes;
+  const departureMinutes = params.departureMinutes;
   const at = (minutesBeforeDeparture: number): JstDateTime =>
-    toJstDateTime(offer.date, departureMinutes - minutesBeforeDeparture);
+    toJstDateTime(params.date, departureMinutes - minutesBeforeDeparture);
 
   const terminalArrivalOffset = binding.minutes + safetyBufferMinutes;
   const stationTargetOffset = terminalArrivalOffset + terminalTransferMinutes;
 
   return {
-    flightDepartureAt: offer.departureAt,
+    flightDepartureAt: params.departureAt,
     checkInDeadlineAt: rule?.checkInDeadlineMinutes !== undefined ? at(checkInMinutes) : undefined,
     baggageDropDeadlineAt:
       rule?.baggageDropDeadlineMinutes !== undefined ? at(baggageDropMinutes) : undefined,
@@ -195,26 +234,29 @@ function pick(officialValue: number | undefined, fallbackValue: number): number 
 }
 
 function resolveRule(
-  offer: FlightOffer,
+  params: Pick<
+    BoardingParams,
+    "operatingAirlineCode" | "marketingAirlineCode" | "originTerminal"
+  >,
   airportCode: AirportCode,
 ): { rule: AirlineBoardingRule | null; appliedAirlineCode: string } {
   const operatingRule = findBoardingRule(
-    offer.operatingAirlineCode,
+    params.operatingAirlineCode,
     airportCode,
-    offer.originTerminal,
+    params.originTerminal,
   );
   if (operatingRule) {
-    return { rule: operatingRule, appliedAirlineCode: offer.operatingAirlineCode };
+    return { rule: operatingRule, appliedAirlineCode: params.operatingAirlineCode };
   }
   const marketingRule = findBoardingRule(
-    offer.marketingAirlineCode,
+    params.marketingAirlineCode,
     airportCode,
-    offer.originTerminal,
+    params.originTerminal,
   );
   if (marketingRule) {
-    return { rule: marketingRule, appliedAirlineCode: offer.marketingAirlineCode };
+    return { rule: marketingRule, appliedAirlineCode: params.marketingAirlineCode };
   }
-  return { rule: null, appliedAirlineCode: offer.operatingAirlineCode };
+  return { rule: null, appliedAirlineCode: params.operatingAirlineCode };
 }
 
 type SafetyBufferInput = {

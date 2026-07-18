@@ -1,18 +1,22 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ToastProvider } from "@/components/Toast";
+import { AppChrome } from "@/components/AppChrome";
+import { SITE_DESCRIPTION, SITE_NAME } from "@/domain/siteConfig";
 
 export const metadata: Metadata = {
-  title: "成田⇄関空 最安値・空港アクセスカレンダー",
-  description:
-    "成田空港と関西国際空港を結ぶ航空便の日付ごとの最安値、空席状況、航空会社公式サイトへの導線、出発空港までの推奨列車を確認できます。デモデータで動作しています。",
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  // <link rel="manifest"> は app/manifest.ts から自動で挿入される（basePath込み）。
   robots: { index: false, follow: false },
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // 拡大を禁止しない（アクセシビリティ）
   maximumScale: 5,
+  themeColor: "#1d4ed8",
 };
 
 export default function RootLayout({
@@ -22,7 +26,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ToastProvider>
+          <AppChrome />
+          {children}
+        </ToastProvider>
+      </body>
     </html>
   );
 }

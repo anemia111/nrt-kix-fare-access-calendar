@@ -1,10 +1,9 @@
-import { DEMO_NOTICE_BODY, DEMO_NOTICE_TITLE } from "@/providers";
+import { DEMO_PERSISTENT_NOTICE } from "@/domain/siteConfig";
 
 /**
- * デモデータであることの表示（要件34）。
+ * デモデータであることの常時表示（要件34）。
  *
- * デモデータを実データと誤認させてはいけないため、常に目立つ位置に表示し、
- * 閉じられないようにしている。
+ * デモモードのすべての画面上部に常時表示する。閉じられない。
  */
 export function DemoBanner({ detailed = false }: { detailed?: boolean }) {
   return (
@@ -17,8 +16,7 @@ export function DemoBanner({ detailed = false }: { detailed?: boolean }) {
           ⚠
         </span>
         <div className="text-sm leading-relaxed">
-          <p className="font-bold">{DEMO_NOTICE_TITLE}</p>
-          <p>{DEMO_NOTICE_BODY}</p>
+          <p className="font-bold">{DEMO_PERSISTENT_NOTICE}</p>
           {detailed ? (
             <details className="mt-2">
               <summary className="cursor-pointer underline underline-offset-2">
@@ -35,12 +33,10 @@ export function DemoBanner({ detailed = false }: { detailed?: boolean }) {
                   航空会社の搭乗締切・チェックイン条件、ターミナルと最寄駅の対応、
                   駅からの移動時間、航空会社公式サイトのURL。いずれも各社・各空港の
                   公式サイトを情報源とし、出典と最終確認日を保持しています。
-                  これらを入力とする搭乗締切の計算も実際に行っています。
                 </p>
                 <p>
-                  なお、成田⇄関空の直行便を実際に運航しているのは Peach と
-                  ジェットスター・ジャパンのみです。ANA・JAL の便は、LCC と FSC で
-                  計算が変わることを確認できるようにするためデモデータにのみ含めています。
+                  実際の計画には、上部メニューの「実用モード」をご利用ください。
+                  実用モードでは架空データを一切表示しません。
                 </p>
               </div>
             </details>

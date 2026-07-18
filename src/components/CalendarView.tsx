@@ -7,7 +7,7 @@
  * 更新する。選択状態は URL のクエリパラメータにも保存する。
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CALENDAR_DAYS, ROUTES, parseRouteParam } from "@/domain/routes";
 import {
@@ -39,12 +39,30 @@ export function CalendarView() {
     [searchParams],
   );
 
+  // デモトップの各ボタンから渡される scenario。最初の便がある日を自動で開く。
+  const scenario = searchParams.get("scenario");
+
   const [fares, setFares] = useState<DailyLowestFare[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  // scenario の自動オープンは一度だけ行う
+  const scenarioHandledRef = useRef(false);
 
   const today = useMemo(() => todayInJst(), []);
+
+  // 便がある最初の日を自動で開く（デモのシナリオ導線）。
+  const openScenario = useCallback(
+    (list: DailyLowestFare[]) => {
+      if (!scenario || scenarioHandledRef.current) return;
+      const firstOk = list.find((fare) => fare.status === "ok" && fare.offer);
+      if (firstOk) {
+        scenarioHandledRef.current = true;
+        setSelectedDate(firstOk.date);
+      }
+    },
+    [scenario],
+  );
 
   // 手動更新のたびに新しい取得時刻でプロバイダーを作り直す。
   const flightProvider = useMemo(() => new MockFlightProvider(), []);
@@ -60,6 +78,7 @@ export function CalendarView() {
       const cached = reloadToken === 0 ? calendarCache.get(cacheKey) : undefined;
       if (cached) {
         setFares(cached);
+        openScenario(cached);
         return;
       }
 
@@ -75,6 +94,7 @@ export function CalendarView() {
         if (cancelled) return;
         calendarCache.set(cacheKey, result);
         setFares(result);
+        openScenario(result);
       } catch (error) {
         if (cancelled) return;
         // エラーに内部情報を含めない（要件42）
@@ -87,7 +107,7 @@ export function CalendarView() {
     return () => {
       cancelled = true;
     };
-  }, [routeId, periods, today, flightProvider, reloadToken]);
+  }, [routeId, periods, today, flightProvider, reloadToken, openScenario]);
 
   const updateQuery = useCallback(
     (next: { route?: RouteId; periods?: readonly SelectableTimePeriod[] }) => {
@@ -95,7 +115,7 @@ export function CalendarView() {
       params.set("route", next.route ?? routeId);
       params.set("periods", serializePeriods(next.periods ?? periods));
       // ページ全体を再読み込みせず、クエリだけを差し替える
-      router.replace(`/calendar/?${params.toString()}`, { scroll: false });
+      router.replace(`/demo/calendar/?${params.toString()}`, { scroll: false });
     },
     [router, routeId, periods],
   );
