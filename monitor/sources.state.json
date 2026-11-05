@@ -1,51 +1,51 @@
 {
   "jetstar-airport-timing": {
     "hash": "71f3c89d7055762698cac17c9c49997464f85927c17e6fe1e5ae19c55307b60d",
-    "etag": "\"i3m5zvvoq3bl2e\"",
+    "etag": "\"r8xce06572bl3z\"",
     "lastModified": null,
-    "checkedAt": "2026-11-04T01:27:03.206Z",
-    "lastCheckedAt": "2026-11-04T01:27:03.206Z"
+    "checkedAt": "2026-11-05T01:29:41.700Z",
+    "lastCheckedAt": "2026-11-05T01:29:41.700Z"
   },
   "jetstar-nrt-t3": {
     "hash": "a20448790ebe54451e94c30b20e4c1b7c1bed9151af6e4ff19decb2e5f8ef4f8",
-    "etag": "\"rd0gedghmudyxd\"",
+    "etag": "\"mko5c38uyidyyy\"",
     "lastModified": null,
-    "checkedAt": "2026-11-04T01:27:06.810Z",
-    "lastCheckedAt": "2026-11-04T01:27:06.810Z"
+    "checkedAt": "2026-11-05T01:29:42.217Z",
+    "lastCheckedAt": "2026-11-05T01:29:42.217Z"
   },
   "ana-domestic-checkin": {
     "hash": "9f616cd8faecab8dd5759b5cc6c8d65647efe57bf33113746c3e43d22ecd1904",
-    "etag": "W/\"8d4f8-65f68836e0718-gzip\"",
-    "lastModified": "Wed, 04 Nov 2026 00:32:26 GMT",
-    "checkedAt": "2026-11-04T01:27:09.166Z",
-    "lastCheckedAt": "2026-11-04T01:27:09.166Z"
+    "etag": "W/\"8da0b-65f7d1f6b2a4c-gzip\"",
+    "lastModified": "Thu, 05 Nov 2026 01:07:42 GMT",
+    "checkedAt": "2026-11-05T01:29:42.528Z",
+    "lastCheckedAt": "2026-11-05T01:29:42.528Z"
   },
   "narita-terminal-t3": {
     "hash": "801a7fd822e2fabde8df8712f74871716738fec5c206d71a9039ccc3ff4d90ec",
     "etag": "\"6w9kbze2ll392a\"",
     "lastModified": null,
-    "checkedAt": "2026-11-04T01:27:10.062Z",
-    "lastCheckedAt": "2026-11-04T01:27:10.062Z"
+    "checkedAt": "2026-11-05T01:29:43.661Z",
+    "lastCheckedAt": "2026-11-05T01:29:43.661Z"
   },
   "kansai-terminal-t2": {
     "hash": "a69bbf89a090194c451331becedabd3d46c67e59e914a9cc64fcf99c7a77ed26",
     "etag": "\"1790035408-gzip\"",
     "lastModified": "Tue, 22 Sep 2026 00:03:28 GMT",
     "checkedAt": "2026-09-22T00:10:28.057Z",
-    "lastCheckedAt": "2026-11-04T01:27:10.787Z"
+    "lastCheckedAt": "2026-11-05T01:29:45.540Z"
   },
   "cao-holidays-page": {
     "hash": "29e810e5632a78410823d6bc8494ab707649d5cd4edbabf08acd4ff95a1ee4cb",
-    "etag": "\"50ca-6525e1a2c33bc\"",
+    "etag": "\"50ca-6525e1a2c3758\"",
     "lastModified": "Fri, 22 May 2026 01:39:39 GMT",
-    "checkedAt": "2026-11-04T01:27:10.934Z",
-    "lastCheckedAt": "2026-11-04T01:27:10.934Z"
+    "checkedAt": "2026-11-05T01:29:45.818Z",
+    "lastCheckedAt": "2026-11-05T01:29:45.818Z"
   },
   "cao-holidays-csv": {
     "hash": "7f1eadaa10f8a2b57050292cd2ee73410b1f51c8876a6974c90ddc20f37c6350",
     "etag": "\"5422-649cc6d5b46cb\"",
     "lastModified": "Mon, 02 Feb 2026 00:30:17 GMT",
-    "checkedAt": "2026-11-04T01:27:12.210Z",
-    "lastCheckedAt": "2026-11-04T01:27:12.210Z"
+    "checkedAt": "2026-11-05T01:29:47.697Z",
+    "lastCheckedAt": "2026-11-05T01:29:47.697Z"
   }
 }
